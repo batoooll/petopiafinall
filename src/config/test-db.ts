@@ -1,4 +1,4 @@
-import prisma from './prisma'
+import prisma from './prisma' //changed from import {prisma} from './prisma'
 
 async function testDB() {
   try {

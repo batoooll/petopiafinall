@@ -1,6 +1,6 @@
 // clinic.controller.ts
 import { Request, Response, NextFunction } from "express";
-import prisma from "../../config/prisma";
+import prisma from "../../config/prisma"; //changed from import {prisma} from "../../config/prisma"
 
 export const createClinic = async (
   req: Request,

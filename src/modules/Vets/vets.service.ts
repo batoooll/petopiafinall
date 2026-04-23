@@ -1,35 +1,71 @@
-// // src/modules/doctors/doctor.service.ts
-// import { PrismaClient, UserRole } from '@prisma/client';
-// import { AppError, HttpCode } from '../../common/errors/AppError';
+// src/modules/vets/vet.service.ts
+import prisma from '../../config/prisma';
+import { AppError, HttpCode } from '../../common/errors/AppError';
+import { VerificationStatus } from '../../../generated/prisma';
 
-// const prisma = new PrismaClient();
+export class VetService {
 
-// export class DoctorService {
-//   /**
-//    * Business Logic: Submit Certificate for Verification
-//    * Architectural Reasoning: We validate business rules here (e.g., role check) 
-//    * before touching the database.
-//    */
-//   async submitVerification(userId: string, certificateUrl: string) {
-//     const user = await prisma.user.findUnique({ where: { id: userId } });
+  async registerVet(
+    userId: string, 
+    certificateUrl: string,
+    phone: string,
+    yearsOfExperience: number,
+    clinicId: string
+  ) {
+    // 1. Check if the clinic actually exists first
+    const clinicExists = await prisma.clinic.findUnique({ where: { id: clinicId } });
+    if (!clinicExists) {
+      throw new AppError('The selected clinic does not exist.', HttpCode.BAD_REQUEST);
+    }
 
-//     if (!user || user.role !== UserRole.DOCTOR) {
-//       throw new AppError("Only accounts registered as Doctors can submit certificates.", HttpCode.BAD_REQUEST);
-//     }
-
-//     return await prisma.doctorProfile.update({
-//       where: { userId },
-//       data: {
-//         certificateUrl,
-//         verificationStatus: 'PENDING',
-//       },
-//     });
-//   }
-// }
-import prisma from '../../config/prisma'
-
-export class VetsService {
-  async getAllVets() {
-   return await prisma.vetProfile.findMany()
+    // 2. Proceed with registration
+    return await prisma.vetProfile.create({
+      data: {
+        userId,
+        certificateUrl,
+        phone,
+        yearsOfExperience,
+        clinicId,
+        verificationStatus: VerificationStatus.PENDING,
+      }
+    });
   }
+
+
+  async verifyVet(vetProfileId: string, status: VerificationStatus) {
+    const profile = await prisma.vetProfile.findUnique({ where: { id: vetProfileId } });
+    
+    if (!profile) {
+      throw new AppError('Vet profile not found', HttpCode.NOT_FOUND);
+    }
+
+    return await prisma.vetProfile.update({
+      where: { id: vetProfileId },
+      data: { verificationStatus: status }
+    });
+  }
+
+  async updateClinicDetails(userId: string, clinicLocation: string) {
+  // 1. Find the profile to get the linked clinicId
+  const profile = await prisma.vetProfile.findUnique({ 
+    where: { userId },
+    select: { clinicId: true, verificationStatus: true } // Select only what we need
+  });
+  
+  if (!profile) {
+    throw new AppError('Vet profile not found', HttpCode.NOT_FOUND);
+  }
+
+  // 2. Enforce business rule
+  if (profile.verificationStatus !== VerificationStatus.VERIFIED) {
+    throw new AppError('Clinic setup is only allowed for verified Vets', HttpCode.FORBIDDEN);
+  }
+
+  // 3. Update the Clinic record directly using the clinicId
+  return await prisma.clinic.update({
+    where: { id: profile.clinicId }, // Use the ID found in the profile
+    data: { address: clinicLocation } // Update the specific field
+  });
+}
+
 }

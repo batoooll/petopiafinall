@@ -1,4 +1,4 @@
-import prisma from "../../config/prisma";
+import { prisma } from "../../config/prisma";
 import bcrypt from "bcrypt";
 import { UserRole } from "../../../generated/prisma";
 import { AppError } from "../../common/errors/AppError";

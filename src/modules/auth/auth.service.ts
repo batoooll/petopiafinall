@@ -22,7 +22,7 @@ export class AuthService {
     });
 
     if (existing) {
-      throw new AppError("Email already exists", 409);
+      throw new AppError("Email already exists", 409); // Default to 409 Conflict
     }
 
     // Hash password with configurable salt rounds
@@ -73,7 +73,7 @@ export class AuthService {
     });
 
     if (existing) {
-      throw new AppError("Email already exists", 409);
+      throw new AppError("Email already exists", 409); // Default to 409 Conflict
     }
 
     // Verify clinic exists before creating vet
