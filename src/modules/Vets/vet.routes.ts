@@ -2,12 +2,19 @@ import { Router } from 'express';
 import * as vetController from './vet.controller';
 import { protect, restrictTo } from '../../common/middlewares/auth.middleware';
 import { isAdmin } from '../../common/middlewares/admin.middleware'; // Import your new middleware
+import { upload } from '../../common/middlewares/upload.middleware';
 
 const router = Router();
 
 // 1. Vet Registration: 
 // Accessible by logged-in users who have the 'VET' role
-router.post('/register', protect, restrictTo('VET'), vetController.registerVetProfile);
+router.post(
+  '/register',
+  protect,
+  restrictTo('VET'),
+  upload.single('certificate'), 
+  vetController.registerVetProfile
+);
 
 // 2. Clinic Management: 
 // Only for logged-in users who are VETS

@@ -1,3 +1,4 @@
+
 // src/modules/vets/vet.service.ts
 import prisma from '../../config/prisma';
 import { AppError, HttpCode } from '../../common/errors/AppError';
@@ -7,7 +8,7 @@ export class VetService {
 
   async registerVet(
     userId: string, 
-    certificateUrl: string,
+    certificateImage: string,
     phone: string,
     yearsOfExperience: number,
     clinicId: string
@@ -22,7 +23,7 @@ export class VetService {
     return await prisma.vetProfile.create({
       data: {
         userId,
-        certificateUrl,
+        certificateImage,
         phone,
         yearsOfExperience,
         clinicId,

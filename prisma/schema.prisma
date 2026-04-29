@@ -48,6 +48,7 @@ model PetOwnerProfile {
   payments     Payment[]
   pets         Pet[]
   user         User          @relation(fields: [userId], references: [id])
+  
 }
 
 model VetProfile {
@@ -56,7 +57,7 @@ model VetProfile {
   phone              String
   description        String?
   yearsOfExperience  Int
-  certificateUrl     String
+  certificateImage   String
   clinicId           String
   verificationStatus VerificationStatus @default(PENDING)
   clinic             Clinic             @relation(fields: [clinicId], references: [id])
@@ -184,6 +185,7 @@ model Services {
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
   bookings    PetSitting[]
+   images   PetSitterImage[] 
   pet         Pet          @relation("ServicesForPet", fields: [petid], references: [id])
   sitter      User         @relation("ListingsBySitter", fields: [sitterId], references: [id])
 
@@ -346,6 +348,15 @@ model AdminActionLog {
 
   @@index([adminId, createdAt])
 }
+model PetSitterImage {
+  id         String   @id @default(uuid())
+  imagePath  String
+  createdAt  DateTime @default(now())
+
+  serviceId  String
+  service    Services @relation(fields: [serviceId], references: [id])
+}
+
 
 enum UserRole {
   PET_OWNER
