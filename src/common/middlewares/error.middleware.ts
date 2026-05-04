@@ -1,20 +1,20 @@
 import { Request, Response, NextFunction } from 'express';
+import multer from "multer";
 import { AppError } from "../errors/AppError";
 
 export const errorMiddleware = (
   err: any,
-  req: Request,
+  _req: Request,
   res: Response,
-  next: NextFunction
+  _next: NextFunction
 ) => {
-  const statusCode = err instanceof AppError ? err.statusCode : 500;
+  const statusCode =
+    err instanceof AppError ? err.statusCode : err instanceof multer.MulterError ? 400 : 500;
   const message = err.message || "Internal Server Error";
 
   res.status(statusCode).json({
-    status: 'error',
-    statusCode,
+    success: false,
     message,
-    // Only show stack trace in development
-    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
+    error: process.env.NODE_ENV === 'development' ? err.stack : message,
   });
 };

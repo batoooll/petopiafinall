@@ -1,68 +1,43 @@
-// import { Request, Response, NextFunction } from "express";
-// import { verifyToken } from "../utils/jwt";
-
-// export interface AuthRequest extends Request {
-//   user?: any;
-// }
-
-// export const authMiddleware = (
-//   req: AuthRequest,
-//   res: Response,
-//   next: NextFunction
-// ) => {
-
-//   const header = req.headers.authorization;
-
-//   if (!header)
-//     return res.status(401).json({ message: "Unauthorized" });
-
-//   const token = header.split(" ")[1];
-
-//   try {
-
-//     const decoded = verifyToken(token);
-
-//     req.user = decoded;
-
-//     next();
-
-//   } catch {
-
-//     res.status(401).json({ message: "Invalid token" });
-
-//   }
-
-// };
-
 import { Request, Response, NextFunction } from "express";
 import { verifyToken } from "../utils/jwt";
-import { User, UserRole } from '../../../generated/prisma'; 
+import { UserRole } from "../../../generated/prisma";
 import { AppError, HttpCode } from "../errors/AppError";
+import { JwtPayload } from "../utils/jwt";
 
-// 1. Protect: Checks if the user is logged in
-export const protect = (req: Request, res: Response, next: NextFunction) => {
+// Convenience type alias used by controllers that need the authenticated user.
+export interface AuthRequest extends Request {
+  user?: JwtPayload;
+}
+
+// Verifies the Bearer token and attaches the decoded payload to req.user.
+export const protect = (req: Request, _res: Response, next: NextFunction): void => {
   const header = req.headers.authorization;
-  if (!header || !header.startsWith('Bearer ')) {
-    return next(new AppError('Unauthorized', HttpCode.UNAUTHORIZED));
+
+  if (!header || !header.startsWith("Bearer ")) {
+    return next(new AppError("Unauthorized", HttpCode.UNAUTHORIZED));
   }
 
   const token = header.split(" ")[1];
 
+  if (!token) {
+    return next(new AppError("Unauthorized", HttpCode.UNAUTHORIZED));
+  }
+
   try {
-    const decoded = verifyToken(token);
-   // Replace your assignment line with this:
-    req.user = decoded as unknown as User;
+    req.user = verifyToken(token);
     next();
   } catch {
-    return next(new AppError('Invalid token', HttpCode.UNAUTHORIZED));
+    return next(new AppError("Invalid or expired token", HttpCode.UNAUTHORIZED));
   }
 };
 
-// 2. RestrictTo: Checks if the user has the required role
+// Guards a route to one or more roles. Must be used after `protect`.
 export const restrictTo = (...roles: UserRole[]) => {
-  return (req: Request, res: Response, next: NextFunction) => {
-    if (!req.user || !roles.includes(req.user.role)) {
-      return next(new AppError('You do not have permission to perform this action', HttpCode.FORBIDDEN));
+  return (req: Request, _res: Response, next: NextFunction): void => {
+    if (!req.user || !roles.includes(req.user.role as UserRole)) {
+      return next(
+        new AppError("You do not have permission to perform this action", HttpCode.FORBIDDEN)
+      );
     }
     next();
   };

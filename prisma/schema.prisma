@@ -57,8 +57,15 @@ model VetProfile {
   phone              String
   description        String?
   yearsOfExperience  Int
+  appointmentPrice   Float              @default(0)
+  startTime          String             @default("09:00")
+  endTime            String             @default("17:00")
   certificateImage   String
   clinicId           String
+  photo              String?
+  firstName          String?
+  surname            String?
+  specialization     String?
   verificationStatus VerificationStatus @default(PENDING)
   clinic             Clinic             @relation(fields: [clinicId], references: [id])
   user               User               @relation(fields: [userId], references: [id])
@@ -159,7 +166,7 @@ model Appointment {
   startTime         DateTime
   status            AppointmentStatus @default(PENDING)
   reason            String?
-  Price             Int
+  price             Float
   createdAt         DateTime          @default(now())
   petOwnerProfileId String?
   owner             User              @relation("OwnerAppointments", fields: [ownerId], references: [id])
@@ -181,8 +188,9 @@ model Services {
   description String?
   address     String
   pricePerDay Int?
-  ServiceName String
-  createdAt   DateTime     @default(now())
+  ServiceName        String
+  verificationStatus VerificationStatus @default(PENDING)
+  createdAt          DateTime           @default(now())
   updatedAt   DateTime     @updatedAt
   bookings    PetSitting[]
    images   PetSitterImage[] 

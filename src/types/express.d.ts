@@ -1,13 +1,12 @@
-// this folder tells TypeScript that you have added custom properties to the standard Express Request object.
-// Without this file, when you try to use req.user or req.file in your controllers, TypeScript will throw an error saying: "Property 'user' does not exist on type 'Request'."
-
-import { User } from '../../generated/prisma'; // Import your generated User type
+// Augments Express.Request so TypeScript knows what `protect` attaches at runtime.
+// The JWT middleware stores JwtPayload (userId + role), NOT a full database User row.
+import { JwtPayload } from "../common/utils/jwt";
 
 declare global {
   namespace Express {
     interface Request {
-      user?: User; // Add the user property
-      file?: Express.Multer.File; // Add the file property
+      user?: JwtPayload;
+      file?: Express.Multer.File;
     }
   }
 }

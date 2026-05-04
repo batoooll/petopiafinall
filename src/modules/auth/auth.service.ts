@@ -2,7 +2,7 @@ import prisma from "../../config/prisma";
 import bcrypt from "bcrypt";
 import { generateToken } from "../../common/utils/jwt";
 import { UserRole, VerificationStatus } from "../../../generated/prisma";
-import { AppError } from "../../common/errors/AppError";
+import { AppError, HttpCode } from "../../common/errors/AppError";
 
 const SALT_ROUNDS = parseInt(process.env.BCRYPT_SALT_ROUNDS || "12");
 
@@ -22,7 +22,7 @@ export class AuthService {
     });
 
     if (existing) {
-      throw new AppError("Email already exists", 409); // Default to 409 Conflict
+      throw new AppError("Email already exists", HttpCode.BAD_REQUEST);
     }
 
     // Hash password with configurable salt rounds
@@ -52,7 +52,8 @@ export class AuthService {
       role: user.role,
     });
 
-    return { user, token };
+    const { passwordHash: _passwordHash, ...safeUser } = user;
+    return { user: safeUser, token };
   }
 
   // REGISTER VET (PENDING - requires admin approval)
@@ -66,6 +67,9 @@ export class AuthService {
     certificateUrl: string;
     clinicId: string;
     yearsOfExperience: number;
+    appointmentPrice?: number | string;
+    startTime?: string;
+    endTime?: string;
   }) {
     // Check if email already exists
     const existing = await prisma.user.findUnique({
@@ -73,7 +77,7 @@ export class AuthService {
     });
 
     if (existing) {
-      throw new AppError("Email already exists", 409); // Default to 409 Conflict
+      throw new AppError("Email already exists", HttpCode.BAD_REQUEST);
     }
 
     // Verify clinic exists before creating vet
@@ -87,6 +91,30 @@ export class AuthService {
 
     // Hash password with configurable salt rounds
     const passwordHash = await bcrypt.hash(data.password, SALT_ROUNDS);
+    const appointmentPrice = Number(data.appointmentPrice ?? 0);
+
+    if (!Number.isFinite(appointmentPrice) || appointmentPrice < 0) {
+      throw new AppError("appointmentPrice must be a non-negative number", 400);
+    }
+
+    const startTime = data.startTime ?? "09:00";
+    const endTime = data.endTime ?? "17:00";
+
+    if (!/^([01]\d|2[0-3]):([0-5]\d)$/.test(startTime)) {
+      throw new AppError("startTime must use HH:mm format", 400);
+    }
+
+    if (!/^([01]\d|2[0-3]):([0-5]\d)$/.test(endTime)) {
+      throw new AppError("endTime must use HH:mm format", 400);
+    }
+
+    const [startHour, startMinute] = startTime.split(":").map(Number) as [number, number];
+    const [endHour, endMinute] = endTime.split(":").map(Number) as [number, number];
+    const startMinutes = startHour * 60 + startMinute;
+    const endMinutes = endHour * 60 + endMinute;
+    if (endMinutes <= startMinutes) {
+      throw new AppError("endTime must be after startTime", 400);
+    }
 
     // Create user with vet profile (PENDING status - no token returned)
     const user = await prisma.user.create({
@@ -101,9 +129,12 @@ export class AuthService {
         vetProfile: {
           create: {
             phone: data.phone,
-            certificateUrl: data.certificateUrl,
+            certificateImage: data.certificateUrl,
             clinicId: data.clinicId,
             yearsOfExperience: data.yearsOfExperience,
+            appointmentPrice,
+            startTime,
+            endTime,
             verificationStatus: VerificationStatus.PENDING,
           },
         },
@@ -114,9 +145,10 @@ export class AuthService {
     });
 
     // Return message - NO TOKEN until admin approves
+    const { passwordHash: _passwordHash, ...safeUser } = user;
     return {
       message: "Vet registered successfully. Waiting for admin approval.",
-      user,
+      user: safeUser,
     };
   }
 
@@ -162,6 +194,7 @@ export class AuthService {
       role: user.role,
     });
 
-    return { user, token };
+    const { passwordHash: _passwordHash, ...safeUser } = user;
+    return { user: safeUser, token };
   }
 }

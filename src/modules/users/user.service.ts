@@ -1,4 +1,4 @@
-import { prisma } from "../../config/prisma";
+import prisma from "../../config/prisma";
 import bcrypt from "bcrypt";
 import { UserRole } from "../../../generated/prisma";
 import { AppError } from "../../common/errors/AppError";
@@ -61,8 +61,8 @@ export class UserService {
     };
   }
 
-  // UPDATE PROFILE 
- 
+  // UPDATE PROFILE
+
   static async updateProfile(
     userId: string,
     role: UserRole,
@@ -122,7 +122,7 @@ export class UserService {
 
 
   // PET OWNER UPDATE
- 
+
   static async updatePetOwnerProfile(userId: string, data: any) {
 
     // BLOCK VET FIELDS
@@ -221,7 +221,7 @@ export class UserService {
 
 
   // UPDATE PASSWORD
-  
+
   static async updatePassword(
     userId: string,
     currentPassword: string,
@@ -255,7 +255,7 @@ export class UserService {
     return { success: true, message: "Password updated successfully" };
   }
 
-  
+
   // DELETE PROFILE
 
   static async deleteProfile(userId: string) {

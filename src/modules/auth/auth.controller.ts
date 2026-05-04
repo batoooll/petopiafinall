@@ -12,7 +12,11 @@ export class AuthController {
 
       const result = await AuthService.registerPetOwner(req.body);
 
-      res.status(201).json(result);
+      res.status(201).json({
+        success: true,
+        message: "Pet owner registered successfully",
+        data: result,
+      });
 
     } catch (err) {
       next(err);
@@ -29,7 +33,11 @@ export class AuthController {
 
       const result = await AuthService.registerVet(req.body);
 
-      res.status(201).json(result);
+      res.status(201).json({
+        success: true,
+        message: result.message,
+        data: result.user,
+      });
 
     } catch (err) {
       next(err);
@@ -48,7 +56,11 @@ export class AuthController {
 
       const result = await AuthService.login(email, password);
 
-      res.json(result);
+      res.status(200).json({
+        success: true,
+        message: "Login successful",
+        data: result,
+      });
 
     } catch (err) {
       next(err);
