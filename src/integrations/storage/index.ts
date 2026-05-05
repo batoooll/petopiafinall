@@ -1,6 +1,5 @@
 export { IStorageClient, UploadOptions, UploadResult } from "./IStorageClient";
 export { LocalStorageClient } from "./LocalStorageClient";
-export { CloudStorageClient } from "./CloudStorageClient";
 
 import { LocalStorageClient } from "./LocalStorageClient";
 
