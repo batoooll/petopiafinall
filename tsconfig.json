@@ -8,7 +8,7 @@
     // CommonJS is required for ts-node-dev compatibility and all existing imports.
     // NodeNext would require .js extensions on every local import — avoid for now.
     "module": "CommonJS",
-    "moduleResolution": "Node10",
+    "moduleResolution": "node",
 
     // --- Paths ---
     "rootDir": "./src",

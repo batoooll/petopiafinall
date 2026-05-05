@@ -5,8 +5,8 @@ generator client {
 
 generator erd {
   provider = "prisma-erd-generator"
-  
-  output   = "./ERD.svg"
+
+  output = "./ERD.svg"
 }
 
 datasource db {
@@ -38,18 +38,23 @@ model User {
   sittingListings          Services[]                @relation("ListingsBySitter")
   availabilitySlots        VetAvailabilitySlot[]
   vetProfile               VetProfile?
+  sitterProfile            SitterProfile?
+  sitterImages             SitterImage[]
+  sitterAvailability       SitterAvailability[]
+  sittingBookingsAsSitter  SittingBooking[]          @relation("BookingsBySitter")
+  sittingBookingsAsOwner   SittingBooking[]          @relation("BookingsByOwner")
+  sitterReviews            SitterReview[]
 }
 
 model PetOwnerProfile {
   id           String        @id @default(cuid())
   userId       String        @unique
   phone        String
-  address      String?   
+  address      String?
   appointments Appointment[]
   payments     Payment[]
   pets         Pet[]
   user         User          @relation(fields: [userId], references: [id])
-  
 }
 
 model VetProfile {
@@ -74,7 +79,7 @@ model VetProfile {
 
 model Clinic {
   id                String                @id @default(cuid())
-  name              String                
+  name              String
   address           String
   phone             String
   createdAt         DateTime              @default(now())
@@ -84,15 +89,15 @@ model Clinic {
 }
 
 model Pet {
-  id                String              @id @default(cuid())
-  ownerId           String              @unique
+  id                String  @id @default(cuid())
+  ownerId           String  @unique
   petOwnerProfileId String?
 
-  name      String
-  age       Int
-  breed     String?
-  gender    Gender?
-  
+  name   String
+  age    Int
+  breed  String?
+  gender Gender?
+
   appointments      Appointment[]
   medicalRecords    MedicalRecord[]
   owner             User                @relation(fields: [ownerId], references: [id])
@@ -102,8 +107,9 @@ model Pet {
   matchRequestsFrom PetMatchRequest[]   @relation("MatchFromPet")
   matchRequestsTo   PetMatchRequest[]   @relation("MatchToPet")
   recognitionLogs   PetRecognitionLog[]
-  sittingBookings   PetSitting[]
+  sittingBookings   SittingBooking[]
   servicesForPet    Services[]          @relation("ServicesForPet")
+  petSittings       PetSitting[]
 }
 
 model PetImage {
@@ -188,21 +194,21 @@ model Appointment {
 }
 
 model Services {
-  id          String       @id @default(cuid())
-  sitterId    String
-  petid       String
-  title       String
-  description String?
-  address     String
-  pricePerDay Int?
+  id                 String             @id @default(cuid())
+  sitterId           String
+  petid              String
+  title              String
+  description        String?
+  address            String
+  pricePerDay        Int?
   ServiceName        String
   verificationStatus VerificationStatus @default(PENDING)
   createdAt          DateTime           @default(now())
-  updatedAt   DateTime     @updatedAt
-  bookings    PetSitting[]
-   images   PetSitterImage[] 
-  pet         Pet          @relation("ServicesForPet", fields: [petid], references: [id])
-  sitter      User         @relation("ListingsBySitter", fields: [sitterId], references: [id])
+  updatedAt          DateTime           @updatedAt
+  bookings           PetSitting[]
+  images             PetSitterImage[]
+  pet                Pet                @relation("ServicesForPet", fields: [petid], references: [id])
+  sitter             User               @relation("ListingsBySitter", fields: [sitterId], references: [id])
 
   @@index([sitterId])
   @@index([petid])
@@ -351,6 +357,115 @@ model Asset {
   recognitionInputs PetRecognitionLog[] @relation("RecognitionInput")
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Pet Sitting Module
+// ─────────────────────────────────────────────────────────────────────────────
+
+model SitterProfile {
+  id                 String                   @id @default(cuid())
+  userId             String                   @unique
+  bio                String?
+  supportedPetTypes  String[]                 @default([])
+  maxPets            Int                      @default(3)
+  city               String
+  address            String
+  emergencyContact   String
+  isAvailable        Boolean                  @default(true)
+  ratingAverage      Float                    @default(0)
+  totalReviews       Int                      @default(0)
+  verificationStatus SitterVerificationStatus @default(PENDING)
+  createdAt          DateTime                 @default(now())
+  updatedAt          DateTime                 @updatedAt
+
+  user              User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  images            SitterImage[]
+  availabilitySlots SitterAvailability[]
+  bookings          SittingBooking[]     @relation("SitterBookings")
+  reviews           SitterReview[]
+
+  @@index([userId])
+  @@index([verificationStatus])
+  @@index([city])
+  @@index([ratingAverage])
+}
+
+model SitterImage {
+  id              String   @id @default(cuid())
+  sitterProfileId String
+  imageUrl        String
+  storageKey      String   @unique
+  isPrimary       Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  sitterProfile SitterProfile @relation(fields: [sitterProfileId], references: [id], onDelete: Cascade)
+  uploadedBy    User          @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+  uploadedById  String
+
+  @@index([sitterProfileId])
+  @@index([uploadedById])
+}
+
+model SitterAvailability {
+  id              String   @id @default(cuid())
+  sitterProfileId String
+  userId          String
+  startDate       DateTime
+  endDate         DateTime
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  sitterProfile SitterProfile @relation(fields: [sitterProfileId], references: [id], onDelete: Cascade)
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([sitterProfileId, startDate])
+  @@index([userId, startDate])
+}
+
+model SittingBooking {
+  id              String               @id @default(cuid())
+  sitterProfileId String
+  sitterId        String
+  petOwnerId      String
+  petId           String
+  startDate       DateTime
+  endDate         DateTime
+  totalDays       Int
+  ownerNotes      String?
+  emergencyPhone  String
+  status          SittingBookingStatus @default(PENDING)
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  sitterProfile SitterProfile @relation("SitterBookings", fields: [sitterProfileId], references: [id], onDelete: Cascade)
+  sitter        User          @relation("BookingsBySitter", fields: [sitterId], references: [id], onDelete: Cascade)
+  petOwner      User          @relation("BookingsByOwner", fields: [petOwnerId], references: [id], onDelete: Cascade)
+  pet           Pet           @relation(fields: [petId], references: [id], onDelete: Cascade)
+  review        SitterReview?
+
+  @@index([sitterProfileId, startDate])
+  @@index([petOwnerId, startDate])
+  @@index([sitterId, startDate])
+  @@index([status])
+}
+
+model SitterReview {
+  id              String   @id @default(cuid())
+  bookingId       String   @unique
+  sitterProfileId String
+  reviewerUserId  String
+  rating          Int
+  comment         String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  booking       SittingBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  sitterProfile SitterProfile  @relation(fields: [sitterProfileId], references: [id], onDelete: Cascade)
+  reviewer      User           @relation(fields: [reviewerUserId], references: [id], onDelete: Cascade)
+
+  @@index([sitterProfileId])
+  @@index([reviewerUserId])
+}
+
 model AdminActionLog {
   id         String   @id @default(cuid())
   adminId    String
@@ -363,15 +478,15 @@ model AdminActionLog {
 
   @@index([adminId, createdAt])
 }
+
 model PetSitterImage {
-  id         String   @id @default(uuid())
-  imagePath  String
-  createdAt  DateTime @default(now())
+  id        String   @id @default(uuid())
+  imagePath String
+  createdAt DateTime @default(now())
 
-  serviceId  String
-  service    Services @relation(fields: [serviceId], references: [id])
+  serviceId String
+  service   Services @relation(fields: [serviceId], references: [id])
 }
-
 
 enum UserRole {
   PET_OWNER
@@ -420,4 +535,18 @@ enum MatchRequestStatus {
   ACCEPTED
   REJECTED
   CANCELLED
+}
+
+enum SitterVerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum SittingBookingStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  CANCELLED
+  COMPLETED
 }
