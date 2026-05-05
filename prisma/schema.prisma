@@ -5,6 +5,7 @@ generator client {
 
 generator erd {
   provider = "prisma-erd-generator"
+  
   output   = "./ERD.svg"
 }
 
@@ -86,6 +87,12 @@ model Pet {
   id                String              @id @default(cuid())
   ownerId           String              @unique
   petOwnerProfileId String?
+
+  name      String
+  age       Int
+  breed     String?
+  gender    Gender?
+  
   appointments      Appointment[]
   medicalRecords    MedicalRecord[]
   owner             User                @relation(fields: [ownerId], references: [id])
