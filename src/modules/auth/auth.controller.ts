@@ -30,8 +30,16 @@ export class AuthController {
     next: NextFunction
   ) => {
     try {
+      if (!req.file) {
+        res.status(400).json({
+          success: false,
+          message: "Certificate image is required",
+          error: "Certificate image is required",
+        });
+        return;
+      }
 
-      const result = await AuthService.registerVet(req.body);
+      const result = await AuthService.registerVet(req.body, req.file);
 
       res.status(201).json({
         success: true,
