@@ -7,8 +7,8 @@
     // --- Module System ---
     // CommonJS is required for ts-node-dev compatibility and all existing imports.
     // NodeNext would require .js extensions on every local import — avoid for now.
-    "module": "CommonJS",
-    "moduleResolution": "node",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
 
     // --- Paths ---
     "rootDir": "./src",
