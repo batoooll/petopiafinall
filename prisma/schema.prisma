@@ -321,7 +321,7 @@ model SitterProfile {
   id                 String                   @id @default(cuid())
   userId             String                   @unique
   bio                String?
-  idCardImage        String?  
+  IdCardImage        String
   supportedPetTypes  String[]                 @default([])
   maxPets            Int                      @default(3)
   city               String
