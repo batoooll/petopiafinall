@@ -57,81 +57,88 @@ export class AuthService {
   }
 
   // REGISTER VET (PENDING - requires admin approval)
-  static async registerVet(data: {
-    email: string;
-    password: string;
-    fullName: string;
-    age: number;
-    gender: "MALE" | "FEMALE";
-    phone: string;
-    certificateUrl: string;
-    clinicId: string;
-    yearsOfExperience: number;
-    appointmentPrice?: number | string;
-    startTime?: string;
-    endTime?: string;
-  }) {
-    // Check if email already exists
-    const existing = await prisma.user.findUnique({
-      where: { email: data.email },
-    });
+  static async registerVet(
+    data: {
+      email: string;
+      password: string;
+      fullName: string;
+      age: number | string;
+      gender: "MALE" | "FEMALE";
+      phone: string;
+      clinicId?: string;
+      clinicName?: string;
+      clinicAddress?: string;
+      clinicPhone?: string;
+      yearsOfExperience: number | string;
+      appointmentPrice?: number | string;
+      startTime?: string;
+      endTime?: string;
+    },
+    certificateFile: Express.Multer.File
+  ) {
+    const existing = await prisma.user.findUnique({ where: { email: data.email } });
+    if (existing) throw new AppError("Email already exists", HttpCode.BAD_REQUEST);
 
-    if (existing) {
-      throw new AppError("Email already exists", HttpCode.BAD_REQUEST);
+    // Resolve clinic — use existing or create a new one
+    let resolvedClinicId: string;
+    if (data.clinicId) {
+      const clinic = await prisma.clinic.findUnique({ where: { id: data.clinicId } });
+      if (!clinic) throw new AppError("Clinic not found", HttpCode.NOT_FOUND);
+      resolvedClinicId = data.clinicId;
+    } else {
+      if (!data.clinicName || !data.clinicAddress || !data.clinicPhone) {
+        throw new AppError(
+          "clinicName, clinicAddress, and clinicPhone are required when not providing a clinicId",
+          HttpCode.BAD_REQUEST
+        );
+      }
+      const newClinic = await prisma.clinic.create({
+        data: {
+          name: data.clinicName,
+          address: data.clinicAddress,
+          phone: data.clinicPhone,
+        },
+      });
+      resolvedClinicId = newClinic.id;
     }
 
-    // Verify clinic exists before creating vet
-    const clinic = await prisma.clinic.findUnique({
-      where: { id: data.clinicId },
-    });
-
-    if (!clinic) {
-      throw new AppError("Clinic not found", 404);
-    }
-
-    // Hash password with configurable salt rounds
     const passwordHash = await bcrypt.hash(data.password, SALT_ROUNDS);
     const appointmentPrice = Number(data.appointmentPrice ?? 0);
+    const yearsOfExperience = Number(data.yearsOfExperience);
+    const age = Number(data.age);
 
-    if (!Number.isFinite(appointmentPrice) || appointmentPrice < 0) {
-      throw new AppError("appointmentPrice must be a non-negative number", 400);
-    }
+    if (!Number.isFinite(appointmentPrice) || appointmentPrice < 0)
+      throw new AppError("appointmentPrice must be a non-negative number", HttpCode.BAD_REQUEST);
 
-    const startTime = data.startTime ?? "09:00";
-    const endTime = data.endTime ?? "17:00";
+    const startTime = (data.startTime ?? "09:00").trim();
+    const endTime = (data.endTime ?? "17:00").trim();
 
-    if (!/^([01]\d|2[0-3]):([0-5]\d)$/.test(startTime)) {
-      throw new AppError("startTime must use HH:mm format", 400);
-    }
+    if (!/^([01]\d|2[0-3]):([0-5]\d)$/.test(startTime))
+      throw new AppError("startTime must use HH:mm format", HttpCode.BAD_REQUEST);
+    if (!/^([01]\d|2[0-3]):([0-5]\d)$/.test(endTime))
+      throw new AppError("endTime must use HH:mm format", HttpCode.BAD_REQUEST);
 
-    if (!/^([01]\d|2[0-3]):([0-5]\d)$/.test(endTime)) {
-      throw new AppError("endTime must use HH:mm format", 400);
-    }
+    const [sh, sm] = startTime.split(":").map(Number) as [number, number];
+    const [eh, em] = endTime.split(":").map(Number) as [number, number];
+    if (eh * 60 + em <= sh * 60 + sm)
+      throw new AppError("endTime must be after startTime", HttpCode.BAD_REQUEST);
 
-    const [startHour, startMinute] = startTime.split(":").map(Number) as [number, number];
-    const [endHour, endMinute] = endTime.split(":").map(Number) as [number, number];
-    const startMinutes = startHour * 60 + startMinute;
-    const endMinutes = endHour * 60 + endMinute;
-    if (endMinutes <= startMinutes) {
-      throw new AppError("endTime must be after startTime", 400);
-    }
+    const certificateImage = `/uploads/certificates/${certificateFile.filename}`;
 
-    // Create user with vet profile (PENDING status - no token returned)
     const user = await prisma.user.create({
       data: {
         email: data.email,
         passwordHash,
         fullName: data.fullName,
-        age: data.age,
+        age,
         gender: data.gender,
         role: UserRole.VET,
-
         vetProfile: {
           create: {
             phone: data.phone,
-            certificateImage: data.certificateUrl,
-            clinicId: data.clinicId,
-            yearsOfExperience: data.yearsOfExperience,
+            certificateImage,
+            clinicId: resolvedClinicId,
+            yearsOfExperience,
             appointmentPrice,
             startTime,
             endTime,
@@ -139,12 +146,9 @@ export class AuthService {
           },
         },
       },
-      include: {
-        vetProfile: true,
-      },
+      include: { vetProfile: true },
     });
 
-    // Return message - NO TOKEN until admin approves
     const { passwordHash: _passwordHash, ...safeUser } = user;
     return {
       message: "Vet registered successfully. Waiting for admin approval.",
