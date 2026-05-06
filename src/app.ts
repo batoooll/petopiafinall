@@ -5,7 +5,7 @@ import authRoutes from "./modules/auth/auth.routes";
 import userRoutes from "./modules/users/user.routes";
 import clinicRoutes from "./modules/clinics/clinic.routes";
 import adminRoutes from "./modules/admin/admin.routes";
-import vetRoutes from "./modules/vets/vet.routes";
+import vetRoutes from "./modules/vet/vet.routes";
 import appointmentRoutes from "./modules/appointments/appointments.routes";
 import { errorMiddleware } from "./common/middlewares/error.middleware";
 import petRoutes from "./modules/pets/pets.routes";
