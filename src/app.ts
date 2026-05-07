@@ -10,6 +10,7 @@ import appointmentRoutes from "./modules/appointments/appointments.routes";
 import { errorMiddleware } from "./common/middlewares/error.middleware";
 import petRoutes from "./modules/pets/pets.routes";
 import sittingRoutes from "./modules/sitting/sitting.routes";
+import petMatchingRoutes from "./modules/matching/petMatching.routes";
 
 const app = express();
 
@@ -39,6 +40,7 @@ app.use("/vets", vetRoutes);
 app.use("/appointments", appointmentRoutes);
 app.use("/sitting", sittingRoutes);
 app.use("/pets", petRoutes);
+app.use("/matching", petMatchingRoutes);
 
 app.use((_req, res) => {
   res.status(404).json({
