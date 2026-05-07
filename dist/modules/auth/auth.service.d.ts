@@ -22,21 +22,24 @@ export declare class AuthService {
         email: string;
         password: string;
         fullName: string;
-        age: number;
+        age: number | string;
         gender: "MALE" | "FEMALE";
         phone: string;
-        certificateUrl: string;
-        clinicId: string;
-        yearsOfExperience: number;
+        clinicId?: string;
+        clinicName?: string;
+        clinicAddress?: string;
+        clinicPhone?: string;
+        yearsOfExperience: number | string;
         appointmentPrice?: number | string;
         startTime?: string;
         endTime?: string;
-    }): Promise<{
+    }, certificateFile: Express.Multer.File): Promise<{
         message: string;
         user: {
             vetProfile: {
                 id: string;
                 phone: string;
+                verificationStatus: import("../../../generated/prisma").$Enums.VerificationStatus;
                 userId: string;
                 description: string | null;
                 yearsOfExperience: number;
@@ -48,7 +51,6 @@ export declare class AuthService {
                 firstName: string | null;
                 surname: string | null;
                 specialization: string | null;
-                verificationStatus: import("../../../generated/prisma").$Enums.VerificationStatus;
                 clinicId: string;
             } | null;
             id: string;
@@ -65,6 +67,7 @@ export declare class AuthService {
             vetProfile: {
                 id: string;
                 phone: string;
+                verificationStatus: import("../../../generated/prisma").$Enums.VerificationStatus;
                 userId: string;
                 description: string | null;
                 yearsOfExperience: number;
@@ -76,7 +79,6 @@ export declare class AuthService {
                 firstName: string | null;
                 surname: string | null;
                 specialization: string | null;
-                verificationStatus: import("../../../generated/prisma").$Enums.VerificationStatus;
                 clinicId: string;
             } | null;
             id: string;

@@ -21,6 +21,7 @@ export declare class VetRepository {
     } & {
         id: string;
         phone: string;
+        verificationStatus: import("../../../generated/prisma").$Enums.VerificationStatus;
         userId: string;
         description: string | null;
         yearsOfExperience: number;
@@ -32,7 +33,6 @@ export declare class VetRepository {
         firstName: string | null;
         surname: string | null;
         specialization: string | null;
-        verificationStatus: import("../../../generated/prisma").$Enums.VerificationStatus;
         clinicId: string;
     }>;
     static findProfileByUserId(userId: string): Promise<({
@@ -57,6 +57,7 @@ export declare class VetRepository {
     } & {
         id: string;
         phone: string;
+        verificationStatus: import("../../../generated/prisma").$Enums.VerificationStatus;
         userId: string;
         description: string | null;
         yearsOfExperience: number;
@@ -68,7 +69,6 @@ export declare class VetRepository {
         firstName: string | null;
         surname: string | null;
         specialization: string | null;
-        verificationStatus: import("../../../generated/prisma").$Enums.VerificationStatus;
         clinicId: string;
     }) | null>;
     static findProfileById(profileId: string): Promise<({
@@ -93,6 +93,7 @@ export declare class VetRepository {
     } & {
         id: string;
         phone: string;
+        verificationStatus: import("../../../generated/prisma").$Enums.VerificationStatus;
         userId: string;
         description: string | null;
         yearsOfExperience: number;
@@ -104,7 +105,6 @@ export declare class VetRepository {
         firstName: string | null;
         surname: string | null;
         specialization: string | null;
-        verificationStatus: import("../../../generated/prisma").$Enums.VerificationStatus;
         clinicId: string;
     }) | null>;
     static updateVetProfile(userId: string, data: {
@@ -140,6 +140,7 @@ export declare class VetRepository {
     } & {
         id: string;
         phone: string;
+        verificationStatus: import("../../../generated/prisma").$Enums.VerificationStatus;
         userId: string;
         description: string | null;
         yearsOfExperience: number;
@@ -151,7 +152,6 @@ export declare class VetRepository {
         firstName: string | null;
         surname: string | null;
         specialization: string | null;
-        verificationStatus: import("../../../generated/prisma").$Enums.VerificationStatus;
         clinicId: string;
     }>;
     static updateClinicAddress(clinicId: string, address: string): Promise<{
@@ -192,6 +192,7 @@ export declare class VetRepository {
     } & {
         id: string;
         phone: string;
+        verificationStatus: import("../../../generated/prisma").$Enums.VerificationStatus;
         userId: string;
         description: string | null;
         yearsOfExperience: number;
@@ -203,7 +204,6 @@ export declare class VetRepository {
         firstName: string | null;
         surname: string | null;
         specialization: string | null;
-        verificationStatus: import("../../../generated/prisma").$Enums.VerificationStatus;
         clinicId: string;
     }>;
     static createAvailabilitySlot(data: {
@@ -303,8 +303,12 @@ export declare class VetRepository {
             })[];
         } & {
             id: string;
+            age: number;
+            gender: import("../../../generated/prisma").$Enums.Gender | null;
+            name: string;
             petOwnerProfileId: string | null;
             ownerId: string;
+            breed: string | null;
         };
         owner: {
             id: string;

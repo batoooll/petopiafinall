@@ -6,13 +6,104 @@ import {
   CreateSitterProfileInput,
   UpdateSitterProfileInput,
   UploadSitterImageInput,
+  MIN_SITTER_PLACE_PHOTOS,
+  MIN_SITTER_PROFILE_PHOTOS,
+  REQUIRED_ID_CARD_IMAGES,
   AddAvailabilityInput,
   CreateSittingBookingInput,
   CreateSitterReviewInput,
   SearchSittersInput,
+  UploadIdCardPhotoInput,
+  UploadLocationPhotoInput,
 } from "./sitting.dto";
+import { SitterProfileData, SearchSittersFilters } from "./sitting.types";
+import { SitterProfile } from "../../../generated/prisma";
 
 export class SittingService {
+  private static async getOwnerAndSitterProfile(userId: string) {
+    const [ownerProfile, sitterProfile] = await Promise.all([
+      prisma.petOwnerProfile.findUnique({ where: { userId } }),
+      SittingRepository.getSitterProfileByUserId(userId),
+    ]);
+
+    return { ownerProfile, sitterProfile };
+  }
+
+  private static hasRequiredIdCardImages(ownerProfile: {
+    idCardPhoto1: string | null;
+    idCardPhoto2: string | null;
+  }): boolean {
+    return Boolean(ownerProfile.idCardPhoto1 && ownerProfile.idCardPhoto2);
+  }
+
+  private static async hasRequiredSitterPhotos(
+    sitterProfileId: string,
+    ownerHasProfilePhoto: boolean
+  ) {
+    const images = await SittingRepository.getSitterImages(sitterProfileId);
+    const profilePhotosCount = images.filter((image) => image.isPrimary).length;
+    const placePhotosCount = images.length;
+
+    return {
+      profilePhotosCount,
+      placePhotosCount,
+      hasProfilePhoto:
+        ownerHasProfilePhoto || profilePhotosCount >= MIN_SITTER_PROFILE_PHOTOS,
+      hasMinPlacePhotos: placePhotosCount >= MIN_SITTER_PLACE_PHOTOS,
+    };
+  }
+
+  private static async ensureSitterAccessRequirements(
+    userId: string,
+    overrideSitterProfileId?: string
+  ) {
+    const { ownerProfile, sitterProfile } = await this.getOwnerAndSitterProfile(userId);
+    const sitterProfileId = overrideSitterProfileId ?? sitterProfile?.id;
+
+    if (!ownerProfile) {
+      throw new AppError(
+        "Pet owner profile not found. Please create one first.",
+        HttpCode.NOT_FOUND
+      );
+    }
+
+    if (!this.hasRequiredIdCardImages(ownerProfile)) {
+      throw new AppError(
+        `Exactly ${REQUIRED_ID_CARD_IMAGES} ID card images are required before using sitter services`,
+        HttpCode.BAD_REQUEST
+      );
+    }
+
+    if (!sitterProfileId) {
+      throw new AppError(
+        "Sitter profile not found. Please create one first.",
+        HttpCode.NOT_FOUND
+      );
+    }
+
+    const ownerHasProfilePhoto = Boolean((ownerProfile as any).profilePhoto);
+    const photoState = await this.hasRequiredSitterPhotos(
+      sitterProfileId,
+      ownerHasProfilePhoto
+    );
+
+    if (!photoState.hasProfilePhoto) {
+      throw new AppError(
+        "A profile photo is required before enabling sitter profile or using sitter services",
+        HttpCode.BAD_REQUEST
+      );
+    }
+
+    if (!photoState.hasMinPlacePhotos) {
+      throw new AppError(
+        `At least ${MIN_SITTER_PLACE_PHOTOS} place photos are required before enabling sitter profile or using sitter services`,
+        HttpCode.BAD_REQUEST
+      );
+    }
+
+    return { ownerProfile, sitterProfileId, photoState };
+  }
+
   // ─────────────────────────────────────────────────────────────────────────────
   // Sitter Profile Operations
   // ─────────────────────────────────────────────────────────────────────────────
@@ -30,16 +121,55 @@ export class SittingService {
       throw new AppError("User not found", HttpCode.NOT_FOUND);
     }
 
+    // Get pet owner profile
+    const ownerProfile = await prisma.petOwnerProfile.findUnique({
+      where: { userId },
+    });
+
+    if (!ownerProfile) {
+      throw new AppError(
+        "Pet owner profile not found. Please create one first.",
+        HttpCode.NOT_FOUND
+      );
+    }
+
+    // REQUIREMENT: Exactly 2 ID card images are mandatory.
+    if (!this.hasRequiredIdCardImages(ownerProfile)) {
+      throw new AppError(
+        `Exactly ${REQUIRED_ID_CARD_IMAGES} ID card images are required before creating a sitter profile`,
+        HttpCode.BAD_REQUEST
+      );
+    }
+
     const profile = await SittingRepository.createSitterProfile({
       userId,
+      petOwnerProfileId: ownerProfile.id,
       supportedPetTypes: input.supportedPetTypes,
       maxPets: input.maxPets,
       city: input.city,
       address: input.address,
       emergencyContact: input.emergencyContact,
       ...(input.bio ? { bio: input.bio } : {}),
-      isAvailable: true,
+      isAvailable: false,
     });
+
+    const ownerProfilePhoto = (ownerProfile as any).profilePhoto as
+      | string
+      | undefined;
+    if (ownerProfilePhoto) {
+      const existingImages = await SittingRepository.getSitterImages(profile.id);
+      const hasPrimaryImage = existingImages.some((image) => image.isPrimary);
+
+      if (!hasPrimaryImage) {
+        await SittingRepository.createSitterImage({
+          sitterProfileId: profile.id,
+          imageUrl: ownerProfilePhoto,
+          storageKey: `owner-profile-reuse:${ownerProfile.id}`,
+          uploadedById: userId,
+          isPrimary: true,
+        });
+      }
+    }
 
     return profile;
   }
@@ -81,9 +211,12 @@ export class SittingService {
       );
     }
 
-    const updated = await SittingRepository.updateSitterProfile(userId, {
-      ...input,
-    } as any);
+    // REQUIREMENT: enforce full sitter access requirements before activating.
+    if (input.isAvailable === true) {
+      await this.ensureSitterAccessRequirements(userId, profile.id);
+    }
+
+    const updated = await SittingRepository.updateSitterProfile(userId, input as Partial<SitterProfileData>);
 
     return updated;
   }
@@ -175,13 +308,189 @@ export class SittingService {
       );
     }
 
-    // Delete file from storage
-    await storageClient.delete(image.storageKey);
+    // Keep active sitters compliant with minimum place photos.
+    if (profile.isAvailable) {
+      const images = await SittingRepository.getSitterImages(profile.id);
+      const remainingImages = images.filter((img) => img.id !== imageId);
+      const ownerProfile = await prisma.petOwnerProfile.findUnique({
+        where: { userId },
+      });
+      const ownerHasProfilePhoto = Boolean((ownerProfile as any)?.profilePhoto);
+      const hasProfilePhotoAfterDelete =
+        ownerHasProfilePhoto ||
+        remainingImages.some((remainingImage) => remainingImage.isPrimary);
+
+      if (remainingImages.length < MIN_SITTER_PLACE_PHOTOS) {
+        throw new AppError(
+          `Active sitters must keep at least ${MIN_SITTER_PLACE_PHOTOS} place photos`,
+          HttpCode.BAD_REQUEST
+        );
+      }
+
+      if (!hasProfilePhotoAfterDelete) {
+        throw new AppError(
+          "Active sitters must keep a profile photo",
+          HttpCode.BAD_REQUEST
+        );
+      }
+    }
+
+    // Delete file from storage unless image was reused from owner profile.
+    if (!image.storageKey.startsWith("owner-profile-reuse:")) {
+      await storageClient.delete(image.storageKey);
+    }
 
     // Delete image record from database
     await SittingRepository.deleteSitterImage(imageId);
 
     return { message: "Image deleted successfully" };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Pet Owner Verification Photos (Shared with Sitter Profile)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  static async uploadIdCardPhoto(
+    userId: string,
+    file: Express.Multer.File,
+    input: UploadIdCardPhotoInput
+  ) {
+    if (!file) {
+      throw new AppError("No file provided", HttpCode.BAD_REQUEST);
+    }
+
+    // Validate file is an image
+    if (!file.mimetype.startsWith("image/")) {
+      throw new AppError(
+        "Only image files are allowed",
+        HttpCode.BAD_REQUEST
+      );
+    }
+
+    // Get or create pet owner profile
+    let ownerProfile = await prisma.petOwnerProfile.findUnique({
+      where: { userId },
+    });
+
+    if (!ownerProfile) {
+      throw new AppError(
+        "Pet owner profile not found. Please create one first.",
+        HttpCode.NOT_FOUND
+      );
+    }
+
+    // Upload file using storage client
+    const uploadResult = await storageClient.upload(
+      file.buffer,
+      file.originalname,
+      `owner-verification/id-cards/${ownerProfile.id}`,
+      { mimeType: file.mimetype }
+    );
+
+    // Update pet owner profile with ID card photo
+    const fieldName = input.photoNumber === "1" ? "idCardPhoto1" : "idCardPhoto2";
+    const updated = await prisma.petOwnerProfile.update({
+      where: { userId },
+      data: {
+        [fieldName]: uploadResult.url,
+      },
+      include: {
+        sitterProfile: true,
+      },
+    });
+
+    return {
+      photoNumber: input.photoNumber,
+      url: uploadResult.url,
+      message: `ID card photo ${input.photoNumber} uploaded successfully`,
+      data: updated,
+    };
+  }
+
+  static async uploadLocationPhoto(
+    userId: string,
+    file: Express.Multer.File,
+    input: UploadLocationPhotoInput
+  ) {
+    if (!file) {
+      throw new AppError("No file provided", HttpCode.BAD_REQUEST);
+    }
+
+    // Validate file is an image
+    if (!file.mimetype.startsWith("image/")) {
+      throw new AppError(
+        "Only image files are allowed",
+        HttpCode.BAD_REQUEST
+      );
+    }
+
+    // Get pet owner profile
+    let ownerProfile = await prisma.petOwnerProfile.findUnique({
+      where: { userId },
+    });
+
+    if (!ownerProfile) {
+      throw new AppError(
+        "Pet owner profile not found. Please create one first.",
+        HttpCode.NOT_FOUND
+      );
+    }
+
+    // Upload file using storage client
+    const uploadResult = await storageClient.upload(
+      file.buffer,
+      file.originalname,
+      `owner-verification/locations/${ownerProfile.id}`,
+      { mimeType: file.mimetype }
+    );
+
+    // Update pet owner profile with location photo
+    const fieldName = input.photoNumber === "1" ? "locationPhoto1" : "locationPhoto2";
+    const updated = await prisma.petOwnerProfile.update({
+      where: { userId },
+      data: {
+        [fieldName]: uploadResult.url,
+      },
+      include: {
+        sitterProfile: true,
+      },
+    });
+
+    return {
+      photoNumber: input.photoNumber,
+      url: uploadResult.url,
+      message: `Location photo ${input.photoNumber} uploaded successfully`,
+      data: updated,
+    };
+  }
+
+  static async getVerificationPhotos(userId: string) {
+    const ownerProfile = await prisma.petOwnerProfile.findUnique({
+      where: { userId },
+      select: {
+        id: true,
+        idCardPhoto1: true,
+        idCardPhoto2: true,
+        locationPhoto1: true,
+        locationPhoto2: true,
+        verificationStatus: true,
+        sitterProfile: {
+          select: {
+            id: true,
+            verificationStatus: true,
+          },
+        },
+      },
+    });
+
+    if (!ownerProfile) {
+      throw new AppError(
+        "Pet owner profile not found",
+        HttpCode.NOT_FOUND
+      );
+    }
+
+    return ownerProfile;
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -198,6 +507,8 @@ export class SittingService {
         HttpCode.NOT_FOUND
       );
     }
+
+    await this.ensureSitterAccessRequirements(userId, profile.id);
 
     const availability = await SittingRepository.addAvailability({
       sitterProfileId: profile.id,
@@ -218,6 +529,8 @@ export class SittingService {
         HttpCode.NOT_FOUND
       );
     }
+
+    await this.ensureSitterAccessRequirements(userId, profile.id);
 
     return SittingRepository.getSitterAvailability(profile.id);
   }
@@ -277,6 +590,24 @@ export class SittingService {
       throw new AppError("Sitter not found", HttpCode.NOT_FOUND);
     }
 
+    // REQUIREMENT: Only APPROVED sitters can receive bookings
+    if (sitterProfile.verificationStatus !== "APPROVED") {
+      throw new AppError(
+        "This sitter is not approved to receive bookings",
+        HttpCode.BAD_REQUEST
+      );
+    }
+
+    // REQUIREMENT: Sitter must be marked as available
+    if (!sitterProfile.isAvailable) {
+      throw new AppError(
+        "Sitter is not currently available",
+        HttpCode.BAD_REQUEST
+      );
+    }
+
+    await this.ensureSitterAccessRequirements(sitterProfile.userId, sitterProfile.id);
+
     // Cannot book own profile
     if (sitterProfile.userId === userId) {
       throw new AppError(
@@ -295,6 +626,20 @@ export class SittingService {
     if (!isAvailable) {
       throw new AppError(
         "Sitter is not available for the requested dates",
+        HttpCode.BAD_REQUEST
+      );
+    }
+
+    // REQUIREMENT: Enforce pet limit constraint (max 3 pets at same time)
+    const overlappingBookings = await SittingRepository.countOverlappingAcceptedBookings(
+      sitterProfile.id,
+      input.startDate,
+      input.endDate
+    );
+
+    if (overlappingBookings >= 3) {
+      throw new AppError(
+        "Sitter has reached maximum pet capacity for this date range",
         HttpCode.BAD_REQUEST
       );
     }
@@ -323,6 +668,7 @@ export class SittingService {
     page: number = 1,
     limit: number = 10
   ) {
+    await this.ensureSitterAccessRequirements(userId);
     return SittingRepository.getSitterBookings(userId, undefined, page, limit);
   }
 
@@ -331,6 +677,7 @@ export class SittingService {
     page: number = 1,
     limit: number = 10
   ) {
+    await this.ensureSitterAccessRequirements(userId);
     const { bookings, total } = await SittingRepository.getSitterBookings(
       userId,
       "PENDING",
@@ -350,6 +697,8 @@ export class SittingService {
   }
 
   static async acceptBooking(userId: string, bookingId: string) {
+    await this.ensureSitterAccessRequirements(userId);
+
     // Get booking
     const booking = await SittingRepository.getSittingBookingById(bookingId);
 
@@ -382,6 +731,8 @@ export class SittingService {
   }
 
   static async rejectBooking(userId: string, bookingId: string) {
+    await this.ensureSitterAccessRequirements(userId);
+
     // Get booking
     const booking = await SittingRepository.getSittingBookingById(bookingId);
 
@@ -527,8 +878,8 @@ export class SittingService {
   // Search Operations
   // ─────────────────────────────────────────────────────────────────────────────
 
-  static async searchSitters(filters: SearchSittersInput) {
-    return SittingRepository.searchSitters(filters as any);
+  static async searchSitters(filters: SearchSittersInput): Promise<{ sitters: SitterProfile[]; total: number }> {
+    return SittingRepository.searchSitters(filters as SearchSittersFilters);
   }
 
   // ─────────────────────────────────────────────────────────────────────────────

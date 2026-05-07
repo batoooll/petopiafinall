@@ -38,6 +38,7 @@ export class SittingRepository {
     return prisma.sitterProfile.create({
       data: {
         userId: data.userId,
+        petOwnerProfileId: data.petOwnerProfileId!,
         bio: data.bio || null,
         supportedPetTypes: data.supportedPetTypes,
         maxPets: data.maxPets,
@@ -126,7 +127,7 @@ export class SittingRepository {
         sitterProfileId: data.sitterProfileId,
         imageUrl: data.imageUrl,
         storageKey: data.storageKey,
-        uploadedById: data.uploadedById,
+        uploadedById: data.uploadedById || null,
         isPrimary: data.isPrimary || false,
       },
     });
@@ -209,6 +210,21 @@ export class SittingRepository {
     return !!slot;
   }
 
+  static async countOverlappingAcceptedBookings(
+    sitterProfileId: string,
+    startDate: Date,
+    endDate: Date
+  ): Promise<number> {
+    return prisma.sittingBooking.count({
+      where: {
+        sitterProfileId,
+        status: SittingBookingStatus.ACCEPTED,
+        startDate: { lte: endDate },
+        endDate: { gte: startDate },
+      },
+    });
+  }
+
   // ─────────────────────────────────────────────────────────────────────────────
   // Sitting Booking Operations
   // ─────────────────────────────────────────────────────────────────────────────
@@ -219,36 +235,39 @@ export class SittingRepository {
       (data.endDate.getTime() - data.startDate.getTime()) / (1000 * 60 * 60 * 24)
     );
 
-    // Check for overlapping accepted bookings
-    const overlapping = await prisma.sittingBooking.findFirst({
-      where: {
-        sitterProfileId: data.sitterProfileId,
-        status: SittingBookingStatus.ACCEPTED,
-        startDate: { lte: data.endDate },
-        endDate: { gte: data.startDate },
-      },
-    });
+    // Use transaction to ensure atomic operation
+    return prisma.$transaction(async (tx) => {
+      // Final check: ensure no overlapping accepted bookings exceed pet limit
+      const overlappingCount = await tx.sittingBooking.count({
+        where: {
+          sitterProfileId: data.sitterProfileId,
+          status: SittingBookingStatus.ACCEPTED,
+          startDate: { lte: data.endDate },
+          endDate: { gte: data.startDate },
+        },
+      });
 
-    if (overlapping) {
-      throw new AppError(
-        "Sitter has an accepted booking during this period",
-        HttpCode.BAD_REQUEST
-      );
-    }
+      if (overlappingCount >= 3) {
+        throw new AppError(
+          "Sitter has reached maximum pet capacity for this date range",
+          HttpCode.BAD_REQUEST
+        );
+      }
 
-    return prisma.sittingBooking.create({
-      data: {
-        sitterProfileId: data.sitterProfileId,
-        sitterId: data.sitterId,
-        petOwnerId: data.petOwnerId,
-        petId: data.petId,
-        startDate: data.startDate,
-        endDate: data.endDate,
-        totalDays,
-        ownerNotes: data.ownerNotes || null,
-        emergencyPhone: data.emergencyPhone,
-        status: SittingBookingStatus.PENDING,
-      },
+      return tx.sittingBooking.create({
+        data: {
+          sitterProfileId: data.sitterProfileId,
+          sitterId: data.sitterId,
+          petOwnerId: data.petOwnerId,
+          petId: data.petId,
+          startDate: data.startDate,
+          endDate: data.endDate,
+          totalDays,
+          ownerNotes: data.ownerNotes || null,
+          emergencyPhone: data.emergencyPhone,
+          status: SittingBookingStatus.PENDING,
+        },
+      });
     });
   }
 
@@ -453,7 +472,7 @@ export class SittingRepository {
   // Search and Filter Operations
   // ─────────────────────────────────────────────────────────────────────────────
 
-  static async searchSitters(filters: SearchSittersFilters) {
+  static async searchSitters(filters: SearchSittersFilters): Promise<{ sitters: SitterProfile[]; total: number }> {
     const skip = (filters.page - 1) * filters.limit;
 
     const where: Record<string, unknown> = {
@@ -487,9 +506,11 @@ export class SittingRepository {
       orderBy = { totalReviews: "desc" };
     }
 
+    const whereClause = where as Record<string, unknown>;
+
     const [sitters, total] = await Promise.all([
       prisma.sitterProfile.findMany({
-        where: where as any,
+        where: whereClause,
         include: {
           user: {
             select: {
@@ -506,7 +527,7 @@ export class SittingRepository {
         skip,
         take: filters.limit,
       }),
-      prisma.sitterProfile.count({ where: where as any }),
+      prisma.sitterProfile.count({ where: whereClause }),
     ]);
 
     return { sitters, total };

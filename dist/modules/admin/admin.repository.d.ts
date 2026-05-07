@@ -27,6 +27,7 @@ export declare class AdminRepository {
     } & {
         id: string;
         phone: string;
+        verificationStatus: import("../../../generated/prisma").$Enums.VerificationStatus;
         userId: string;
         description: string | null;
         yearsOfExperience: number;
@@ -38,12 +39,12 @@ export declare class AdminRepository {
         firstName: string | null;
         surname: string | null;
         specialization: string | null;
-        verificationStatus: import("../../../generated/prisma").$Enums.VerificationStatus;
         clinicId: string;
     })[]>;
     findVetProfileById(id: string): Promise<{
         id: string;
         phone: string;
+        verificationStatus: import("../../../generated/prisma").$Enums.VerificationStatus;
         userId: string;
         description: string | null;
         yearsOfExperience: number;
@@ -55,7 +56,6 @@ export declare class AdminRepository {
         firstName: string | null;
         surname: string | null;
         specialization: string | null;
-        verificationStatus: import("../../../generated/prisma").$Enums.VerificationStatus;
         clinicId: string;
     } | null>;
     updateVetStatus(id: string, status: VerificationStatus): Promise<{
@@ -71,6 +71,7 @@ export declare class AdminRepository {
     } & {
         id: string;
         phone: string;
+        verificationStatus: import("../../../generated/prisma").$Enums.VerificationStatus;
         userId: string;
         description: string | null;
         yearsOfExperience: number;
@@ -82,69 +83,11 @@ export declare class AdminRepository {
         firstName: string | null;
         surname: string | null;
         specialization: string | null;
-        verificationStatus: import("../../../generated/prisma").$Enums.VerificationStatus;
         clinicId: string;
     }>;
-    findPendingSitters(): Promise<({
-        images: {
-            id: string;
-            createdAt: Date;
-            imagePath: string;
-        }[];
-        sitter: {
-            id: string;
-            email: string;
-            fullName: string;
-        };
-    } & {
-        id: string;
-        createdAt: Date;
-        address: string;
-        updatedAt: Date;
-        description: string | null;
-        verificationStatus: import("../../../generated/prisma").$Enums.VerificationStatus;
-        sitterId: string;
-        petid: string;
-        title: string;
-        pricePerDay: number | null;
-        ServiceName: string;
-    })[]>;
-    findSitterListingById(id: string): Promise<{
-        id: string;
-        createdAt: Date;
-        address: string;
-        updatedAt: Date;
-        description: string | null;
-        verificationStatus: import("../../../generated/prisma").$Enums.VerificationStatus;
-        sitterId: string;
-        petid: string;
-        title: string;
-        pricePerDay: number | null;
-        ServiceName: string;
-    } | null>;
-    updateSitterStatus(id: string, status: VerificationStatus): Promise<{
-        images: {
-            id: string;
-            imagePath: string;
-        }[];
-        sitter: {
-            id: string;
-            email: string;
-            fullName: string;
-        };
-    } & {
-        id: string;
-        createdAt: Date;
-        address: string;
-        updatedAt: Date;
-        description: string | null;
-        verificationStatus: import("../../../generated/prisma").$Enums.VerificationStatus;
-        sitterId: string;
-        petid: string;
-        title: string;
-        pricePerDay: number | null;
-        ServiceName: string;
-    }>;
+    findPendingSitters(): Promise<any>;
+    findSitterListingById(id: string): Promise<any>;
+    updateSitterStatus(id: string, status: VerificationStatus): Promise<any>;
     findPendingAppointmentPayments(): Promise<({
         appointment: ({
             owner: {
@@ -185,7 +128,6 @@ export declare class AdminRepository {
         createdAt: Date;
         updatedAt: Date;
         appointmentId: string | null;
-        sittingBookingId: string | null;
         payerId: string;
         method: import("../../../generated/prisma").$Enums.PaymentMethod;
         status: import("../../../generated/prisma").$Enums.PaymentStatus;
@@ -214,7 +156,6 @@ export declare class AdminRepository {
         createdAt: Date;
         updatedAt: Date;
         appointmentId: string | null;
-        sittingBookingId: string | null;
         payerId: string;
         method: import("../../../generated/prisma").$Enums.PaymentMethod;
         status: import("../../../generated/prisma").$Enums.PaymentStatus;
@@ -228,7 +169,6 @@ export declare class AdminRepository {
         createdAt: Date;
         updatedAt: Date;
         appointmentId: string | null;
-        sittingBookingId: string | null;
         payerId: string;
         method: import("../../../generated/prisma").$Enums.PaymentMethod;
         status: import("../../../generated/prisma").$Enums.PaymentStatus;
@@ -255,7 +195,6 @@ export declare class AdminRepository {
         createdAt: Date;
         updatedAt: Date;
         appointmentId: string | null;
-        sittingBookingId: string | null;
         payerId: string;
         method: import("../../../generated/prisma").$Enums.PaymentMethod;
         status: import("../../../generated/prisma").$Enums.PaymentStatus;

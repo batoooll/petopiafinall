@@ -13,6 +13,8 @@ const admin_routes_1 = __importDefault(require("./modules/admin/admin.routes"));
 const vet_routes_1 = __importDefault(require("./modules/vets/vet.routes"));
 const appointments_routes_1 = __importDefault(require("./modules/appointments/appointments.routes"));
 const error_middleware_1 = require("./common/middlewares/error.middleware");
+const pets_routes_1 = __importDefault(require("./modules/pets/pets.routes"));
+const sitting_routes_1 = __importDefault(require("./modules/sitting/sitting.routes"));
 const app = (0, express_1.default)();
 app.use((0, cors_1.default)({
     origin: process.env.FRONTEND_URL || "http://localhost:5173",
@@ -34,6 +36,8 @@ app.use("/clinic", clinic_routes_1.default);
 app.use("/admin", admin_routes_1.default);
 app.use("/vets", vet_routes_1.default);
 app.use("/appointments", appointments_routes_1.default);
+app.use("/sitting", sitting_routes_1.default);
+app.use("/pets", pets_routes_1.default);
 app.use((_req, res) => {
     res.status(404).json({
         success: false,
