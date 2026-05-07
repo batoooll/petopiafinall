@@ -1,6 +1,39 @@
-import { VerificationStatus } from "../../../generated/prisma";
+import { PrismaClient } from "../../../generated/prisma";
+export declare class ConflictError extends Error {
+    constructor();
+}
 export declare class AppointmentsRepository {
-    static findVetWithProfile(vetId: string): Promise<({
+    private readonly db;
+    constructor(db: PrismaClient);
+    listVerifiedVets(): Promise<{
+        id: string;
+        email: string;
+        fullName: string;
+        availabilitySlots: {
+            id: string;
+            startTime: Date;
+            endTime: Date;
+        }[];
+        vetProfile: {
+            id: string;
+            phone: string;
+            verificationStatus: import("../../../generated/prisma").$Enums.VerificationStatus;
+            clinic: {
+                id: string;
+                name: string;
+                phone: string;
+                address: string;
+            };
+            description: string | null;
+            yearsOfExperience: number;
+            appointmentPrice: number;
+            startTime: string;
+            endTime: string;
+            photo: string | null;
+            specialization: string | null;
+        } | null;
+    }[]>;
+    findVetWithProfile(vetId: string): Promise<({
         vetProfile: ({
             clinic: {
                 id: string;
@@ -13,6 +46,7 @@ export declare class AppointmentsRepository {
         } & {
             id: string;
             phone: string;
+            verificationStatus: import("../../../generated/prisma").$Enums.VerificationStatus;
             userId: string;
             description: string | null;
             yearsOfExperience: number;
@@ -24,7 +58,6 @@ export declare class AppointmentsRepository {
             firstName: string | null;
             surname: string | null;
             specialization: string | null;
-            verificationStatus: import("../../../generated/prisma").$Enums.VerificationStatus;
             clinicId: string;
         }) | null;
     } & {
@@ -37,80 +70,78 @@ export declare class AppointmentsRepository {
         createdAt: Date;
         gender: import("../../../generated/prisma").$Enums.Gender;
     }) | null>;
-    static findPetForOwner(petId: string, ownerId: string): Promise<({
-        petOwnerProfile: {
-            id: string;
-            phone: string;
-            address: string | null;
-            userId: string;
-        } | null;
-    } & {
+    findPetForOwner(petId: string, ownerId: string): Promise<{
         id: string;
         petOwnerProfileId: string | null;
-        ownerId: string;
-    }) | null>;
-    static findActiveAvailabilitySlot(vetId: string, startTime: Date): Promise<{
-        id: string;
-        startTime: Date;
-        endTime: Date;
-        clinicId: string | null;
-        vetId: string;
-        isActive: boolean;
     } | null>;
-    static findExistingAppointment(vetId: string, startTime: Date): Promise<{
-        id: string;
-        createdAt: Date;
-        startTime: Date;
-        status: import("../../../generated/prisma").$Enums.AppointmentStatus;
-        petOwnerProfileId: string | null;
-        ownerId: string;
-        vetId: string;
-        petId: string;
-        clinicName: string | null;
-        clinicAddress: string | null;
-        reason: string | null;
-        price: number;
-    } | null>;
-    static createAppointment(data: {
+    bookAtomically(data: {
         ownerId: string;
         vetId: string;
         petId: string;
         startTime: Date;
-        reason?: string | undefined;
         price: number;
-        clinicName?: string | undefined;
-        clinicAddress?: string | undefined;
-        petOwnerProfileId?: string | undefined;
+        clinicName: string;
+        clinicAddress: string;
+        reason?: string;
+        petOwnerProfileId?: string;
+        invoiceUrl: string;
+        invoiceStorageKey: string;
+        invoiceMimeType: string;
+        invoiceSizeBytes: number;
     }): Promise<{
-        pet: {
+        appointment: {
+            pet: {
+                id: string;
+                name: string;
+                breed: string | null;
+            };
+            owner: {
+                id: string;
+                email: string;
+                fullName: string;
+            };
+            vet: {
+                id: string;
+                email: string;
+                fullName: string;
+            };
+        } & {
             id: string;
+            createdAt: Date;
+            startTime: Date;
+            status: import("../../../generated/prisma").$Enums.AppointmentStatus;
             petOwnerProfileId: string | null;
             ownerId: string;
+            vetId: string;
+            petId: string;
+            clinicName: string | null;
+            clinicAddress: string | null;
+            reason: string | null;
+            price: number;
         };
-        owner: {
+        payment: {
             id: string;
-            email: string;
-            fullName: string;
+            createdAt: Date;
+            updatedAt: Date;
+            appointmentId: string | null;
+            payerId: string;
+            method: import("../../../generated/prisma").$Enums.PaymentMethod;
+            status: import("../../../generated/prisma").$Enums.PaymentStatus;
+            amount: number;
+            currency: string;
+            proofAssetId: string | null;
+            petOwnerProfileId: string | null;
         };
-        vet: {
+        asset: {
             id: string;
-            email: string;
-            fullName: string;
+            createdAt: Date;
+            url: string;
+            mimeType: string | null;
+            sizeBytes: number | null;
+            storageKey: string | null;
+            uploadedById: string | null;
         };
-    } & {
-        id: string;
-        createdAt: Date;
-        startTime: Date;
-        status: import("../../../generated/prisma").$Enums.AppointmentStatus;
-        petOwnerProfileId: string | null;
-        ownerId: string;
-        vetId: string;
-        petId: string;
-        clinicName: string | null;
-        clinicAddress: string | null;
-        reason: string | null;
-        price: number;
     }>;
 }
-export { VerificationStatus };
+export declare const appointmentsRepository: AppointmentsRepository;
 //# sourceMappingURL=appointments.repository.d.ts.map

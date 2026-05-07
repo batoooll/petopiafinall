@@ -2,6 +2,7 @@ import { SitterVerificationStatus, SittingBookingStatus } from "../../../generat
 
 export interface SitterProfileData {
   userId: string;
+  petOwnerProfileId?: string;
   bio?: string;
   supportedPetTypes: string[];
   maxPets: number;
@@ -15,7 +16,7 @@ export interface SitterImageData {
   sitterProfileId: string;
   imageUrl: string;
   storageKey: string;
-  uploadedById: string;
+  uploadedById?: string;
   isPrimary?: boolean;
 }
 

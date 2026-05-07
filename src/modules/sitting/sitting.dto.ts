@@ -1,5 +1,9 @@
 import { z } from "zod";
 
+export const MIN_SITTER_PLACE_PHOTOS = 2;
+export const MIN_SITTER_PROFILE_PHOTOS = 1;
+export const REQUIRED_ID_CARD_IMAGES = 2;
+
 // ─────────────────────────────────────────────
 // Pagination
 // ─────────────────────────────────────────────
@@ -40,10 +44,25 @@ export type UpdateSitterProfileInput = z.infer<typeof UpdateSitterProfileSchema>
 // Image
 // ─────────────────────────────────────────────
 export const UploadSitterImageSchema = z.object({
-  isPrimary: z.boolean().optional().default(false),
+  isPrimary: z.coerce.boolean().optional().default(false),
 });
 
 export type UploadSitterImageInput = z.infer<typeof UploadSitterImageSchema>;
+
+// ─────────────────────────────────────────────
+// Verification Photos (PetOwner for PetSitter)
+// ─────────────────────────────────────────────
+export const UploadIdCardPhotoSchema = z.object({
+  photoNumber: z.enum(["1", "2"]).describe("Which ID card photo (1 or 2)"),
+});
+
+export type UploadIdCardPhotoInput = z.infer<typeof UploadIdCardPhotoSchema>;
+
+export const UploadLocationPhotoSchema = z.object({
+  photoNumber: z.enum(["1", "2"]).describe("Which location photo (1 or 2)"),
+});
+
+export type UploadLocationPhotoInput = z.infer<typeof UploadLocationPhotoSchema>;
 
 // ─────────────────────────────────────────────
 // Availability

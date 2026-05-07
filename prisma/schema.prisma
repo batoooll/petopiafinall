@@ -34,7 +34,7 @@ model User {
   pets                     Pet?
   ownerProfile             PetOwnerProfile?
   recognitionLogs          PetRecognitionLog[]
- 
+  sitterImagesUploadedBy   SitterImage[]             @relation("SitterImagesUploadedBy")
   
   availabilitySlots        VetAvailabilitySlot[]
   vetProfile               VetProfile?
@@ -46,14 +46,21 @@ model User {
 }
 
 model PetOwnerProfile {
-  id           String        @id @default(cuid())
-  userId       String        @unique
-  phone        String
-  address      String?
-  appointments Appointment[]
-  payments     Payment[]
-  pets         Pet[]
-  user         User          @relation(fields: [userId], references: [id])
+  id                   String        @id @default(cuid())
+  userId               String        @unique
+  phone                String
+  address              String?
+  // Verification photos (for pet sitter identity & location verification)
+  idCardPhoto1         String?       // First ID card photo URL
+  idCardPhoto2         String?       // Second ID card photo URL
+  locationPhoto1       String?       // First pet sitting location photo URL
+  locationPhoto2       String?       // Second pet sitting location photo URL
+  verificationStatus   SitterVerificationStatus @default(PENDING)
+  appointments         Appointment[]
+  payments             Payment[]
+  pets                 Pet[]
+  sitterProfile        SitterProfile?
+  user                 User          @relation(fields: [userId], references: [id])
 }
 
 model VetProfile {
@@ -320,8 +327,8 @@ model Asset {
 model SitterProfile {
   id                 String                   @id @default(cuid())
   userId             String                   @unique
+  petOwnerProfileId  String                   @unique
   bio                String?
-  IdCardImage        String
   supportedPetTypes  String[]                 @default([])
   maxPets            Int                      @default(3)
   city               String
@@ -334,6 +341,7 @@ model SitterProfile {
   createdAt          DateTime                 @default(now())
   updatedAt          DateTime                 @updatedAt
 
+  petOwnerProfile   PetOwnerProfile      @relation(fields: [petOwnerProfileId], references: [id], onDelete: Cascade)
   user              User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   images            SitterImage[]
   availabilitySlots SitterAvailability[]
@@ -341,6 +349,7 @@ model SitterProfile {
   reviews           SitterReview[]
 
   @@index([userId])
+  @@index([petOwnerProfileId])
   @@index([verificationStatus])
   @@index([city])
   @@index([ratingAverage])
@@ -352,13 +361,13 @@ model SitterImage {
   imageUrl        String
   storageKey      String   @unique
   isPrimary       Boolean  @default(false)
+  uploadedById    String?
   createdAt       DateTime @default(now())
 
   sitterProfile SitterProfile @relation(fields: [sitterProfileId], references: [id], onDelete: Cascade)
- 
+  uploadedBy    User?         @relation("SitterImagesUploadedBy", fields: [uploadedById], references: [id], onDelete: SetNull)
 
   @@index([sitterProfileId])
-
 }
 
 model SitterAvailability {

@@ -1,5 +1,6 @@
 "use strict";
 // // src/integrations/vision/VisionClient.ts
+Object.defineProperty(exports, "__esModule", { value: true });
 // export interface PetAnalysisResult {
 //   species: 'DOG' | 'CAT';
 //   breed: string;

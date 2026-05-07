@@ -11,6 +11,8 @@ import {
   CreateSitterReviewSchema,
   SearchSittersSchema,
   PaginationSchema,
+  UploadIdCardPhotoSchema,
+  UploadLocationPhotoSchema,
 } from "./sitting.dto";
 
 export class SittingController {
@@ -221,6 +223,110 @@ export class SittingController {
       return res.json({
         success: true,
         message: result.message,
+      });
+    } catch (err) {
+      return next(err);
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Pet Owner Verification Photos Endpoints
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  static async uploadIdCardPhoto(
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      if (!req.user?.userId) {
+        throw new AppError("Unauthorized", HttpCode.UNAUTHORIZED);
+      }
+
+      if (!req.file) {
+        throw new AppError("No file provided", HttpCode.BAD_REQUEST);
+      }
+
+      const parsed = UploadIdCardPhotoSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(HttpCode.BAD_REQUEST).json({
+          success: false,
+          message: "Validation failed",
+          error: parsed.error.flatten().fieldErrors,
+        });
+      }
+
+      const result = await SittingService.uploadIdCardPhoto(
+        req.user.userId,
+        req.file,
+        parsed.data
+      );
+
+      return res.status(HttpCode.CREATED).json({
+        success: true,
+        message: result.message,
+        data: result,
+      });
+    } catch (err) {
+      return next(err);
+    }
+  }
+
+  static async uploadLocationPhoto(
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      if (!req.user?.userId) {
+        throw new AppError("Unauthorized", HttpCode.UNAUTHORIZED);
+      }
+
+      if (!req.file) {
+        throw new AppError("No file provided", HttpCode.BAD_REQUEST);
+      }
+
+      const parsed = UploadLocationPhotoSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(HttpCode.BAD_REQUEST).json({
+          success: false,
+          message: "Validation failed",
+          error: parsed.error.flatten().fieldErrors,
+        });
+      }
+
+      const result = await SittingService.uploadLocationPhoto(
+        req.user.userId,
+        req.file,
+        parsed.data
+      );
+
+      return res.status(HttpCode.CREATED).json({
+        success: true,
+        message: result.message,
+        data: result,
+      });
+    } catch (err) {
+      return next(err);
+    }
+  }
+
+  static async getVerificationPhotos(
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      if (!req.user?.userId) {
+        throw new AppError("Unauthorized", HttpCode.UNAUTHORIZED);
+      }
+
+      const photos = await SittingService.getVerificationPhotos(req.user.userId);
+
+      return res.json({
+        success: true,
+        message: "Verification photos retrieved successfully",
+        data: photos,
       });
     } catch (err) {
       return next(err);

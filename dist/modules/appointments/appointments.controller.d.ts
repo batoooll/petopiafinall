@@ -1,6 +1,12 @@
-import { Response, NextFunction } from "express";
+import { Request, Response } from "express";
 import { AuthRequest } from "../../common/middlewares/auth.middleware";
+import { AppointmentsService } from "./appointments.service";
 export declare class AppointmentsController {
-    static createAppointment: (req: AuthRequest, res: Response, next: NextFunction) => Promise<void>;
+    private readonly service;
+    constructor(service: AppointmentsService);
+    getDoctors: (_req: Request, res: Response) => Promise<void>;
+    bookAppointment: (req: AuthRequest, res: Response) => Promise<void>;
+    private handleError;
 }
+export declare const appointmentsController: AppointmentsController;
 //# sourceMappingURL=appointments.controller.d.ts.map

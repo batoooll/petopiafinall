@@ -1,62 +1,75 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.AppointmentsService = void 0;
-const AppError_1 = require("../../common/errors/AppError");
+exports.appointmentsService = exports.AppointmentsService = void 0;
 const prisma_1 = require("../../../generated/prisma");
+const AppError_1 = require("../../common/errors/AppError");
 const appointments_repository_1 = require("./appointments.repository");
 class AppointmentsService {
-    static timeToMinutes(time) {
-        const [hour, minute] = time.split(":").map(Number);
-        return hour * 60 + minute;
+    repo;
+    constructor(repo) {
+        this.repo = repo;
     }
-    static validateAppointmentWithinVetHours(appointmentStart, profileStartTime, profileEndTime) {
-        const appointmentMinutes = appointmentStart.getUTCHours() * 60 + appointmentStart.getUTCMinutes();
-        const startMinutes = this.timeToMinutes(profileStartTime);
-        const endMinutes = this.timeToMinutes(profileEndTime);
-        if (appointmentMinutes < startMinutes || appointmentMinutes >= endMinutes) {
-            throw new AppError_1.AppError("Appointment time must be within vet working hours", AppError_1.HttpCode.BAD_REQUEST);
-        }
+    async listDoctors() {
+        return this.repo.listVerifiedVets();
     }
-    static async createAppointment(ownerId, dto) {
-        if (!dto.vetId || !dto.petId || !dto.startTime) {
-            throw new AppError_1.AppError("vetId, petId, and startTime are required", AppError_1.HttpCode.BAD_REQUEST);
+    async bookAppointment(ownerId, dto, invoiceFile) {
+        if (!invoiceFile) {
+            throw new AppError_1.AppError("Invoice proof image is required", AppError_1.HttpCode.BAD_REQUEST);
         }
         const requestedTime = new Date(dto.startTime);
-        if (isNaN(requestedTime.getTime())) {
-            throw new AppError_1.AppError("Invalid startTime", AppError_1.HttpCode.BAD_REQUEST);
-        }
-        const vet = await appointments_repository_1.AppointmentsRepository.findVetWithProfile(dto.vetId);
+        const vet = await this.repo.findVetWithProfile(dto.vetId);
         if (!vet || vet.role !== prisma_1.UserRole.VET || !vet.vetProfile) {
             throw new AppError_1.AppError("Vet not found", AppError_1.HttpCode.NOT_FOUND);
         }
-        if (vet.vetProfile.verificationStatus !== appointments_repository_1.VerificationStatus.VERIFIED) {
+        if (vet.vetProfile.verificationStatus !== prisma_1.VerificationStatus.VERIFIED) {
             throw new AppError_1.AppError("Only verified vets can receive appointments", AppError_1.HttpCode.FORBIDDEN);
         }
-        this.validateAppointmentWithinVetHours(requestedTime, vet.vetProfile.startTime, vet.vetProfile.endTime);
-        const pet = await appointments_repository_1.AppointmentsRepository.findPetForOwner(dto.petId, ownerId);
+        this.validateWithinWorkingHours(requestedTime, vet.vetProfile.startTime, vet.vetProfile.endTime);
+        const pet = await this.repo.findPetForOwner(dto.petId, ownerId);
         if (!pet) {
             throw new AppError_1.AppError("Pet not found for this owner", AppError_1.HttpCode.NOT_FOUND);
         }
-        const availabilitySlot = await appointments_repository_1.AppointmentsRepository.findActiveAvailabilitySlot(dto.vetId, requestedTime);
-        if (!availabilitySlot) {
-            throw new AppError_1.AppError("No active availability slot for this time", AppError_1.HttpCode.BAD_REQUEST);
+        try {
+            return await this.repo.bookAtomically({
+                ownerId,
+                vetId: dto.vetId,
+                petId: dto.petId,
+                startTime: requestedTime,
+                price: vet.vetProfile.appointmentPrice,
+                clinicName: vet.vetProfile.clinic.name,
+                clinicAddress: vet.vetProfile.clinic.address,
+                ...(dto.reason !== undefined ? { reason: dto.reason } : {}),
+                ...(pet.petOwnerProfileId !== null && pet.petOwnerProfileId !== undefined
+                    ? { petOwnerProfileId: pet.petOwnerProfileId }
+                    : {}),
+                invoiceUrl: `/uploads/invoices/${invoiceFile.filename}`,
+                invoiceStorageKey: `invoices/${invoiceFile.filename}`,
+                invoiceMimeType: invoiceFile.mimetype,
+                invoiceSizeBytes: invoiceFile.size,
+            });
         }
-        const existingAppointment = await appointments_repository_1.AppointmentsRepository.findExistingAppointment(dto.vetId, requestedTime);
-        if (existingAppointment) {
-            throw new AppError_1.AppError("This appointment time is already booked", AppError_1.HttpCode.BAD_REQUEST);
+        catch (err) {
+            if (err instanceof appointments_repository_1.ConflictError) {
+                throw new AppError_1.AppError(err.message, AppError_1.HttpCode.CONFLICT);
+            }
+            if (err instanceof prisma_1.Prisma.PrismaClientKnownRequestError &&
+                err.code === "P2034") {
+                throw new AppError_1.AppError("Slot was taken by a concurrent request. Please try again.", AppError_1.HttpCode.CONFLICT);
+            }
+            throw err;
         }
-        return appointments_repository_1.AppointmentsRepository.createAppointment({
-            ownerId,
-            vetId: dto.vetId,
-            petId: dto.petId,
-            startTime: requestedTime,
-            price: vet.vetProfile.appointmentPrice,
-            clinicName: vet.vetProfile.clinic.name,
-            clinicAddress: vet.vetProfile.clinic.address,
-            ...(dto.reason !== undefined ? { reason: dto.reason } : {}),
-            ...(pet.petOwnerProfileId !== null ? { petOwnerProfileId: pet.petOwnerProfileId } : {}),
-        });
+    }
+    validateWithinWorkingHours(startTime, profileStart, profileEnd) {
+        const apptMinutes = startTime.getUTCHours() * 60 + startTime.getUTCMinutes();
+        const [sh, sm] = profileStart.split(":").map(Number);
+        const [eh, em] = profileEnd.split(":").map(Number);
+        const startMinutes = sh * 60 + sm;
+        const endMinutes = eh * 60 + em;
+        if (apptMinutes < startMinutes || apptMinutes >= endMinutes) {
+            throw new AppError_1.AppError("Appointment time must be within vet working hours", AppError_1.HttpCode.BAD_REQUEST);
+        }
     }
 }
 exports.AppointmentsService = AppointmentsService;
+exports.appointmentsService = new AppointmentsService(appointments_repository_1.appointmentsRepository);
 //# sourceMappingURL=appointments.service.js.map

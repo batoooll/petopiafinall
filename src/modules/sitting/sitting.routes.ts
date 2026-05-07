@@ -45,6 +45,29 @@ router.get("/images", protect, SittingController.getSitterImages);
 router.delete("/images/:imageId", protect, SittingController.deleteSitterImage);
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Pet Owner Verification Photos Routes
+// ─────────────────────────────────────────────────────────────────────────────
+
+// POST /sitting/verification/id-card - Upload ID card photo
+router.post(
+  "/verification/id-card",
+  protect,
+  imageUpload.single("photo"),
+  SittingController.uploadIdCardPhoto
+);
+
+// POST /sitting/verification/location - Upload location photo
+router.post(
+  "/verification/location",
+  protect,
+  imageUpload.single("photo"),
+  SittingController.uploadLocationPhoto
+);
+
+// GET /sitting/verification/photos - Get verification photos
+router.get("/verification/photos", protect, SittingController.getVerificationPhotos);
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Availability Routes
 // ─────────────────────────────────────────────────────────────────────────────
 

@@ -30,6 +30,7 @@ export declare class AdminService {
     } & {
         id: string;
         phone: string;
+        verificationStatus: import("../../../generated/prisma").$Enums.VerificationStatus;
         userId: string;
         description: string | null;
         yearsOfExperience: number;
@@ -41,7 +42,6 @@ export declare class AdminService {
         firstName: string | null;
         surname: string | null;
         specialization: string | null;
-        verificationStatus: import("../../../generated/prisma").$Enums.VerificationStatus;
         clinicId: string;
     })[]>;
     approveVet(vetProfileId: string, adminId: string): Promise<{
@@ -57,6 +57,7 @@ export declare class AdminService {
     } & {
         id: string;
         phone: string;
+        verificationStatus: import("../../../generated/prisma").$Enums.VerificationStatus;
         userId: string;
         description: string | null;
         yearsOfExperience: number;
@@ -68,7 +69,6 @@ export declare class AdminService {
         firstName: string | null;
         surname: string | null;
         specialization: string | null;
-        verificationStatus: import("../../../generated/prisma").$Enums.VerificationStatus;
         clinicId: string;
     }>;
     rejectVet(vetProfileId: string, adminId: string): Promise<{
@@ -84,6 +84,7 @@ export declare class AdminService {
     } & {
         id: string;
         phone: string;
+        verificationStatus: import("../../../generated/prisma").$Enums.VerificationStatus;
         userId: string;
         description: string | null;
         yearsOfExperience: number;
@@ -95,79 +96,11 @@ export declare class AdminService {
         firstName: string | null;
         surname: string | null;
         specialization: string | null;
-        verificationStatus: import("../../../generated/prisma").$Enums.VerificationStatus;
         clinicId: string;
     }>;
-    getPendingSitters(): Promise<({
-        images: {
-            id: string;
-            createdAt: Date;
-            imagePath: string;
-        }[];
-        sitter: {
-            id: string;
-            email: string;
-            fullName: string;
-        };
-    } & {
-        id: string;
-        createdAt: Date;
-        address: string;
-        updatedAt: Date;
-        description: string | null;
-        verificationStatus: import("../../../generated/prisma").$Enums.VerificationStatus;
-        sitterId: string;
-        petid: string;
-        title: string;
-        pricePerDay: number | null;
-        ServiceName: string;
-    })[]>;
-    approveSitter(serviceId: string, adminId: string): Promise<{
-        images: {
-            id: string;
-            imagePath: string;
-        }[];
-        sitter: {
-            id: string;
-            email: string;
-            fullName: string;
-        };
-    } & {
-        id: string;
-        createdAt: Date;
-        address: string;
-        updatedAt: Date;
-        description: string | null;
-        verificationStatus: import("../../../generated/prisma").$Enums.VerificationStatus;
-        sitterId: string;
-        petid: string;
-        title: string;
-        pricePerDay: number | null;
-        ServiceName: string;
-    }>;
-    rejectSitter(serviceId: string, adminId: string): Promise<{
-        images: {
-            id: string;
-            imagePath: string;
-        }[];
-        sitter: {
-            id: string;
-            email: string;
-            fullName: string;
-        };
-    } & {
-        id: string;
-        createdAt: Date;
-        address: string;
-        updatedAt: Date;
-        description: string | null;
-        verificationStatus: import("../../../generated/prisma").$Enums.VerificationStatus;
-        sitterId: string;
-        petid: string;
-        title: string;
-        pricePerDay: number | null;
-        ServiceName: string;
-    }>;
+    getPendingSitters(): Promise<any>;
+    approveSitter(serviceId: string, adminId: string): Promise<any>;
+    rejectSitter(serviceId: string, adminId: string): Promise<any>;
     getPendingPayments(): Promise<({
         appointment: ({
             owner: {
@@ -208,7 +141,6 @@ export declare class AdminService {
         createdAt: Date;
         updatedAt: Date;
         appointmentId: string | null;
-        sittingBookingId: string | null;
         payerId: string;
         method: import("../../../generated/prisma").$Enums.PaymentMethod;
         status: import("../../../generated/prisma").$Enums.PaymentStatus;
@@ -223,7 +155,6 @@ export declare class AdminService {
             createdAt: Date;
             updatedAt: Date;
             appointmentId: string | null;
-            sittingBookingId: string | null;
             payerId: string;
             method: import("../../../generated/prisma").$Enums.PaymentMethod;
             status: import("../../../generated/prisma").$Enums.PaymentStatus;
@@ -253,7 +184,6 @@ export declare class AdminService {
             createdAt: Date;
             updatedAt: Date;
             appointmentId: string | null;
-            sittingBookingId: string | null;
             payerId: string;
             method: import("../../../generated/prisma").$Enums.PaymentMethod;
             status: import("../../../generated/prisma").$Enums.PaymentStatus;
