@@ -11,6 +11,8 @@ import { errorMiddleware } from "./common/middlewares/error.middleware";
 import petRoutes from "./modules/pets/pets.routes";
 import sittingRoutes from "./modules/sitting/sitting.routes";
 import petMatchingRoutes from "./modules/matching/petMatching.routes";
+import chatRoutes
+from "./modules/chat/chat.routes";
 
 const app = express();
 
@@ -41,6 +43,7 @@ app.use("/appointments", appointmentRoutes);
 app.use("/sitting", sittingRoutes);
 app.use("/pets", petRoutes);
 app.use("/matching", petMatchingRoutes);
+app.use("/chat", chatRoutes);
 
 app.use((_req, res) => {
   res.status(404).json({

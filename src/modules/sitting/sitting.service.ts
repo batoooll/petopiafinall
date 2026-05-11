@@ -17,7 +17,8 @@ import {
   UploadLocationPhotoInput,
 } from "./sitting.dto";
 import { SitterProfileData, SearchSittersFilters } from "./sitting.types";
-import { SitterProfile } from "../../../generated/prisma";
+import { SittingBookingStatus, SitterProfile } from "../../../generated/prisma";
+import { ChatRepository } from "../chat/chat.repository";
 
 export class SittingService {
   private static async getOwnerAndSitterProfile(userId: string) {
@@ -722,10 +723,18 @@ export class SittingService {
       );
     }
 
-    const updated = await SittingRepository.updateBookingStatus(
-      bookingId,
-      "ACCEPTED"
-    );
+    const updated = await prisma.$transaction(async (tx) => {
+      const row = await tx.sittingBooking.update({
+        where: { id: bookingId },
+        data: { status: SittingBookingStatus.ACCEPTED },
+      });
+      await ChatRepository.createConversationIfMissing(
+        row.sitterId,
+        row.petOwnerId,
+        tx
+      );
+      return row;
+    });
 
     return updated;
   }

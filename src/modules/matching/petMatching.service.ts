@@ -7,6 +7,7 @@ import { AppError, HttpCode } from "../../common/errors/AppError";
 import prisma from "../../config/prisma";
 
 import { PetMatchingRepository } from "./petMatching.repository";
+import { ChatRepository } from "../chat/chat.repository";
 
 import {
   CreateMatchProfileDto,
@@ -255,7 +256,7 @@ export class PetMatchingService {
         },
       });
 
-      await PetMatchingRepository.createConversationIfMissing(
+      await ChatRepository.createConversationIfMissing(
         request.fromPet.ownerId,
         request.toPet.ownerId,
         tx

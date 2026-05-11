@@ -1,8 +1,5 @@
 import prisma from "../../config/prisma";
-import {
-  MatchRequestStatus,
-  Prisma,
-} from "../../../generated/prisma";
+import { MatchRequestStatus } from "../../../generated/prisma";
 
 export class PetMatchingRepository {
 
@@ -201,55 +198,4 @@ export class PetMatchingRepository {
     });
   }
 
-  // CHAT CREATION
-
-  static async createConversationIfMissing(
-    userA: string,
-    userB: string,
-    db: Prisma.TransactionClient | typeof prisma = prisma
-  ) {
-    const existingConversation =
-      await db.conversation.findFirst({
-        where: {
-          AND: [
-            {
-              participants: {
-                some: {
-                  userId: userA,
-                },
-              },
-            },
-            {
-              participants: {
-                some: {
-                  userId: userB,
-                },
-              },
-            },
-          ],
-        },
-      });
-
-    if (existingConversation) {
-      return existingConversation;
-    }
-
-    return db.conversation.create({
-      data: {
-        participants: {
-          create: [
-            {
-              userId: userA,
-            },
-            {
-              userId: userB,
-            },
-          ],
-        },
-      },
-      include: {
-        participants: true,
-      },
-    });
-  }
 }
