@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+
+# Environment variables
+.env
+
+# Generated files
+generated/
+
+# Logs
+*.log
+
+# Zip files
+*.zip
+
+# AI model
+ai-service/models/
