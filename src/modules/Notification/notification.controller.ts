@@ -13,7 +13,7 @@ export class NotificationController {
     req: AuthRequest,
     res: Response,
     next: NextFunction,
-  ) => {
+  ): Promise<void> => {
     try {
       if (!req.user?.userId) {
         throw new AppError('Unauthorized', HttpCode.UNAUTHORIZED);
@@ -21,11 +21,12 @@ export class NotificationController {
 
       const parsed = GetNotificationsSchema.safeParse(req.query);
       if (!parsed.success) {
-        return res.status(HttpCode.BAD_REQUEST).json({
+        res.status(HttpCode.BAD_REQUEST).json({
           success: false,
           message: 'Validation failed',
           error: parsed.error.flatten().fieldErrors,
         });
+        return;
       }
 
       const data = await NotificationService.getMyNotifications(
@@ -52,7 +53,7 @@ export class NotificationController {
     req: AuthRequest,
     res: Response,
     next: NextFunction,
-  ) => {
+  ): Promise<void> => {
     try {
       if (!req.user?.userId) {
         throw new AppError('Unauthorized', HttpCode.UNAUTHORIZED);
@@ -60,11 +61,12 @@ export class NotificationController {
 
       const parsed = NotificationIdSchema.safeParse(req.params);
       if (!parsed.success) {
-        return res.status(HttpCode.BAD_REQUEST).json({
+        res.status(HttpCode.BAD_REQUEST).json({
           success: false,
           message: 'Validation failed',
           error: parsed.error.flatten().fieldErrors,
         });
+        return;
       }
 
       await NotificationService.markAsRead(
@@ -106,7 +108,7 @@ export class NotificationController {
     req: AuthRequest,
     res: Response,
     next: NextFunction,
-  ) => {
+  ): Promise<void> => {
     try {
       if (!req.user?.userId) {
         throw new AppError('Unauthorized', HttpCode.UNAUTHORIZED);
@@ -114,11 +116,12 @@ export class NotificationController {
 
       const parsed = NotificationIdSchema.safeParse(req.params);
       if (!parsed.success) {
-        return res.status(HttpCode.BAD_REQUEST).json({
+        res.status(HttpCode.BAD_REQUEST).json({
           success: false,
           message: 'Validation failed',
           error: parsed.error.flatten().fieldErrors,
         });
+        return;
       }
 
       await NotificationService.deleteNotification(
